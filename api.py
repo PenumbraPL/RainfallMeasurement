@@ -16,33 +16,70 @@ def parse_line(start_txt, line):
 
 
 def read(window, go_event):
-    savedData = float(0)
+    savedData = {'flowRate' : 0, 'pumpState': 'Unknown', 'waterLevel' : 0, 'sensorLevel' : 'Unknown'}
     while go_event.isSet():
         data = arduino.readline().decode('utf-8').strip("\n").split(":")
         try:
             data_type = data[0]
-            flowRate = None      
+            flowRate = None
+            pumpState = None     
+            waterLevel = None
+            sensorLevel = None
             if data_type == 'P':
                 waterFlow = int(data[1])
                 flowRate = waterFlow / 2.25
                 flowRate = flowRate * 1000. / 60.
                 print(flowRate)
+            elif data_type == 'D':
+                waterLevel = int(data[1])
+                print(data[1])
+            elif data_type == 'S':
+                s = int(data[1])
+                if s < 266:
+                    sensorLevel = '< 5 mm'
+                elif s < 313:
+                    sensorLevel = '5-10 mm'
+                elif s < 331:
+                    sensorLevel = '10-15 mm'
+                elif s < 346:
+                    sensorLevel = '15-20 mm'
+                elif s < 356:
+                    sensorLevel = '20-25 mm'
+                elif s < 362:
+                    sensorLevel = '25-30 mm'
+                elif s < 370:
+                    sensorLevel = '30-35 mm'
+                elif s < 376:
+                    sensorLevel = '35-40 mm'
+                elif s < 380:
+                    sensorLevel = '40-45 mm'
+                elif s < 385:
+                    sensorLevel = '45-48 mm'
+                print(data[1])
+            elif data_type == 'B':
+                pumpState = 'Wł.' if int(data[1]) else 'Wył.'
+                print(data[1])
+            # ?????
             elif data_type == 'H':
                 print(data[1])
             elif data_type == 'H_MIN':
                 print(data[1])
-            elif data_type == 'D':
-                print(data[1])
-            elif data_type == 'B':
-                print(data[1])
-            flowRate = flowRate if flowRate else savedData
-            savedData = flowRate
-            pumpState = 'Unknown'
-            waterLevel = '13 mm'
+            flowRate = flowRate if flowRate else savedData['flowRate']
+            savedData["flowRate"] = flowRate
+            
+            pumpState = pumpState if pumpState else savedData["pumpState"]
+            savedData["pumpState"] = pumpState
+
+            waterLevel = waterLevel if waterLevel else savedData["waterLevel"]
+            savedData["waterLevel"] = waterLevel
+            
+            sensorLevel = sensorLevel if sensorLevel else savedData["sensorLevel"]
+            savedData["sensorLevel"] = sensorLevel
+
             rainfall = '10 mm'
 
-            data = { 'water' : str(flowRate),
-                'pump' : pumpState, 'level': waterLevel, 'rainfall' : rainfall}
+            data = { 'water' : str(flowRate), 'pump' : pumpState,
+                     'level': str(waterLevel), 'rainfall' : rainfall, 'sensor' : sensorLevel}
 
             window.write_event_value("Working", (data))
         except Exception as ex:
