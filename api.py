@@ -2,7 +2,7 @@ import threading
 import serial
 import PySimpleGUI as sg
 
-arduino = serial.Serial(port='COM12', baudrate=9600, timeout=1)
+arduino = serial.Serial(port='COM3', baudrate=9600, timeout=1)
 
 sg.theme('DarkAmber')
 
