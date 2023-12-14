@@ -17,16 +17,24 @@ def parse_line(start_txt, line):
 
 def read(window, go_event):
     while go_event.isSet():
-        data = arduino.readline().decode('utf-8').strip("\n").split(",")
+        data = arduino.readline().decode('utf-8').strip("\n").split(":")
         try:
-            height = data[0]
-            print(height)         
-            waterFlow = parse_line('D: ', height)
-            if waterFlow:
+            data_type = data[0]
+                  
+            if data_type == 'P':
+                waterFlow = int(data[1])
                 flowRate = waterFlow / 2.25
                 flowRate = flowRate * 1000. / 60.
                 print(flowRate)
-            # window.write_event_value("Working", (156))
+            elif data_type == 'H':
+                print(data[1])
+            elif data_type == 'H_MIN':
+                print(data[1])
+            elif data_type == 'D':
+                print(data[1])
+            elif data_type == 'B':
+                print(data[1])
+            window.write_event_value("Working", (156))
         except Exception as ex:
             print("Data is not readable!")
             print(ex)
@@ -49,7 +57,7 @@ def gui_update(window, w, o, p):
     window["label"].Update("Odczyt z arduino: " + p, visible=True)
     window["in1"].Update(visible=False)
     window["in2"].Update(visible=False)
-    window["start"].Update(visible=False)
+    window["Start"].Update(visible=False)
 
 
 if __name__ == "__main__":
@@ -59,13 +67,13 @@ if __name__ == "__main__":
 
     while True:
         event, values = window.read()
-        val1 = values['in1']
-        val2 = values['in2']
 
         if event == sg.WIN_CLOSED or event == 'Cancel':  # if user closes window or clicks cancel
             break
         elif event == "Start":
             try:
+                val1 = values['in1']
+                val2 = values['in2']
                 if val1 == '' or val2 == '' or not int(val1) or not int(val2):
                     raise Exception()
                 write(val1)
@@ -77,12 +85,13 @@ if __name__ == "__main__":
                 print("Wysokość i objętość muszą być liczbami")
         elif event == "Working":
             height_left = values[event]
-
-            curr_height_in_per = (int(val1)-int(height_left))/int(val1)
+            val1 = values['in1']
+            val2 = values['in2']
+            curr_height_in_per = str((int(val1)-int(height_left))/int(val1))
             try:
                 gui_update(window, values['in1'], values['in2'], curr_height_in_per)
-            except:
+            except Exception as ex:
                 print("sth went wrong - check data")
-        
+                print(ex)
 
     window.close()

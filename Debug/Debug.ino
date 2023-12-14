@@ -25,22 +25,22 @@ void loop() {
 
    #ifdef DEBUG
       Serial.print("D:");
-      Serial.println(0);
+      Serial.println(10);
       Serial.flush();
       Serial.print("B:");
       Serial.println(0);
       Serial.flush();
       Serial.print("S:");
-      Serial.println(0);
+      Serial.println(10);
       Serial.flush();
       Serial.print("H:");
-      Serial.println(0);
+      Serial.println(60);
       Serial.flush();
       Serial.print("H_MIN:");
-      Serial.println(0);
+      Serial.println(90);
       Serial.flush();
       Serial.print("P:");
-      Serial.println(0);
+      Serial.println(450);
       Serial.flush();
    #endif
       
