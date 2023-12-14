@@ -10,23 +10,26 @@ sg.theme('DarkAmber')
 def write(x):
     arduino.write(bytes(x, 'utf-8'))
 
+def parse_line(start_txt, line):
+    if line.find(start_txt) != -1:
+        return int(line[len(start_txt):])
+
 
 def read(window, go_event):
     while go_event.isSet():
         data = arduino.readline().decode('utf-8').strip("\n").split(",")
         try:
-            #print("Data is readable!")
-
             height = data[0]
-            print(height)
-            x = height.find('P:')
-            if x:
-                flowRate = x / 2.25
+            print(height)         
+            waterFlow = parse_line('D: ', height)
+            if waterFlow:
+                flowRate = waterFlow / 2.25
                 flowRate = flowRate * 1000. / 60.
-                print(x)
+                print(flowRate)
             # window.write_event_value("Working", (156))
-        except:
+        except Exception as ex:
             print("Data is not readable!")
+            print(ex)
 
 
 def gui_init():
@@ -56,13 +59,13 @@ if __name__ == "__main__":
 
     while True:
         event, values = window.read()
+        val1 = values['in1']
+        val2 = values['in2']
 
         if event == sg.WIN_CLOSED or event == 'Cancel':  # if user closes window or clicks cancel
             break
         elif event == "Start":
             try:
-                val1 = values['in1']
-                val2 = values['in2']
                 if val1 == '' or val2 == '' or not int(val1) or not int(val2):
                     raise Exception()
                 write(val1)
@@ -74,8 +77,7 @@ if __name__ == "__main__":
                 print("Wysokość i objętość muszą być liczbami")
         elif event == "Working":
             height_left = values[event]
-            val1 = values['in1']
-            val2 = values['in2']
+
             curr_height_in_per = (int(val1)-int(height_left))/int(val1)
             try:
                 gui_update(window, values['in1'], values['in2'], curr_height_in_per)
