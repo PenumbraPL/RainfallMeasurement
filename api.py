@@ -16,11 +16,12 @@ def parse_line(start_txt, line):
 
 
 def read(window, go_event):
+    savedData = float(0)
     while go_event.isSet():
         data = arduino.readline().decode('utf-8').strip("\n").split(":")
         try:
             data_type = data[0]
-                  
+            flowRate = None      
             if data_type == 'P':
                 waterFlow = int(data[1])
                 flowRate = waterFlow / 2.25
@@ -34,7 +35,9 @@ def read(window, go_event):
                 print(data[1])
             elif data_type == 'B':
                 print(data[1])
-            window.write_event_value("Working", (156))
+            flowRate = flowRate if flowRate else savedData
+            savedData = flowRate
+            window.write_event_value("Working", (flowRate))
         except Exception as ex:
             print("Data is not readable!")
             print(ex)
