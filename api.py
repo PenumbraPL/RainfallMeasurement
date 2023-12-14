@@ -1,6 +1,8 @@
 import threading
 import serial
 import PySimpleGUI as sg
+import csv
+from os.path import exists
 
 arduino = serial.Serial(port='COM3', baudrate=9600, timeout=1)
 
@@ -13,6 +15,21 @@ def write(x):
 def parse_line(start_txt, line):
     if line.find(start_txt) != -1:
         return int(line[len(start_txt):])
+
+def write_to_file(path_to_file, rows):
+    if not isinstance(path_to_file, str):
+        return
+    try:
+        if exists(path_to_file):
+            with open(path_to_file, 'a') as f:
+                writer = csv.writer(f)
+                writer.writerows(rows)
+        else:
+             with open(path_to_file, 'w') as f:
+                writer = csv.writer(f)
+                writer.writerows(rows)
+    except Exception as ex:
+        print(ex)
 
 
 def read(window, go_event):
@@ -94,6 +111,7 @@ def gui_init():
               [sg.Text("", key="rainfall", visible=False)],
               [sg.Text("", key="level", visible=False)],
               [sg.Text("", key="pump", visible=False)],
+              [sg.Button('Zapisz', key="Write", visible=False)],
               [sg.Button('Zatwierdz', key="Start")]]
 
     window = sg.Window("Pomiar opadów", layout,size=(300, 250))
@@ -110,6 +128,7 @@ def gui_update(window, data):
     window["rainfall"].Update("Ilość opadów: \t\t1" + data["rainfall"], visible=True)
     window["in1"].Update(visible=False)
     window["in2"].Update(visible=False)
+    window["Write"].Update(visible=True)
     window["Start"].Update(visible=False)
 
 
@@ -146,5 +165,11 @@ if __name__ == "__main__":
             except Exception as ex:
                 print("sth went wrong - check data")
                 print(ex)
+        elif event == "Write":
+            test_data = [['abc', 'def', 'ghj'], ['abc', 'def', 'ghj'], ['abc', 'def', 'ghj']]
+            print('Write')
+            write_to_file('data/test.csv', test_data)
+
+
 
     window.close()
