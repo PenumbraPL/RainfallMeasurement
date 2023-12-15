@@ -1,6 +1,6 @@
 {
     "board": "arduino:avr:uno",
-    "port": "COM3",
+    "port": "COM24",
     "programmer": "avrispmkii",
     "sketch": "RainfallMeasurement.ino"
 }

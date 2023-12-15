@@ -15,9 +15,8 @@
 const uint16_t buttonSwLvl = 500;
 const unsigned long period = 1000;
 const float calibrationFactor = 2.25f; // from datasheet
-uint16_t sensorSwLvl = 500;
+uint16_t sensorSwLvl = 650;
 uint16_t distanceSwLvl = 0;
-uint16_t objectHeight = 0;
 
 bool turnOn = false;
 bool reset0 = false;
@@ -105,7 +104,7 @@ void loop() {
 
       current = states[current]((void*) &current);
 
-      if(current != PUMP_OUT){
+      if(current == PUMP_OUT){
          digitalWrite(WATER_PUMP_OUT, LOW); 
       }else{
          digitalWrite(WATER_PUMP_OUT, HIGH);
@@ -121,24 +120,17 @@ void serialEvent() {
   while (Serial.available()) {
       inputString = Serial.readString();
       int delimieter = inputString.indexOf(":");
-      if(inputString.substring(0, delimieter-1).compareTo("BB:")){
+      if(inputString.substring(0, delimieter-1).compareTo("BB")){
          int buttonValue = inputString.substring(delimieter+1).toInt();
          if(buttonValue){
-            digitalWrite(WATER_PUMP_OUT, HIGH);
+            digitalWrite(WATER_PUMP_OUT, LOW);
          }else{
-            digitalWrite(WATER_PUMP_OUT, LOW); 
+            digitalWrite(WATER_PUMP_OUT, HIGH); 
          }
       }
-      if(inputString.substring(0, delimieter-1).compareTo("MAX:")){
-         sensorSwLvl = inputString.substring(delimieter+1).toInt(); // change
+      if(inputString.substring(0, delimieter-1).compareTo("MAX")){
+         int objectHeight = inputString.substring(delimieter+1).toInt();
+         distanceSwLvl = objectHeight * 0.8;
       }
-      if(inputString.substring(0, delimieter-1).compareTo("MIN:")){
-         distanceSwLvl = inputString.substring(delimieter+1).toInt(); // change
-      }
-      
-
-      //objectHeight = atoi(inputString.c_str());
-      //distanceSwLvl = objectHeight * 0.2;
-      //turnOn = true;
   }
 }

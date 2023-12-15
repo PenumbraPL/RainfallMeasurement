@@ -2,14 +2,17 @@ import threading
 import serial
 import PySimpleGUI as sg
 import csv
+import schedule
+import datetime
 from os.path import exists
 
-arduino = serial.Serial(port='COM3', baudrate=9600, timeout=1)
-
+arduino = serial.Serial(port='COM24', baudrate=9600, timeout=1)
+amount = 0
 sg.theme('DarkAmber')
 
 
-def write(x):
+def write(symbol, x):
+    arduino.write(bytes(symbol, 'utf-8'))
     arduino.write(bytes(x, 'utf-8'))
 
 def parse_line(start_txt, line):
@@ -17,6 +20,7 @@ def parse_line(start_txt, line):
         return int(line[len(start_txt):])
 
 def write_to_file(path_to_file, rows):
+    global amount
     if not isinstance(path_to_file, str):
         return
     try:
@@ -27,7 +31,10 @@ def write_to_file(path_to_file, rows):
         else:
              with open(path_to_file, 'w') as f:
                 writer = csv.writer(f)
+                header_data = ['Time', 'Height', 'Volume']
+                writer.writerow(header_data)
                 writer.writerows(rows)
+        amount = 0         
     except Exception as ex:
         print(ex)
 
@@ -46,7 +53,7 @@ def read(window, go_event):
                 waterFlow = int(data[1])
                 flowRate = waterFlow / 2.25
                 flowRate = flowRate * 1000. / 60.
-                print(flowRate)
+                #print(flowRate)
             elif data_type == 'D':
                 waterLevel = int(data[1])
                 print(data[1])
@@ -75,7 +82,7 @@ def read(window, go_event):
                 print(data[1])
             elif data_type == 'B':
                 pumpState = 'Wł.' if int(data[1]) else 'Wył.'
-                print(data[1])
+                # print(data[1])
 
             flowRate = flowRate if flowRate else savedData['flowRate']
             savedData["flowRate"] = flowRate
@@ -89,10 +96,10 @@ def read(window, go_event):
             sensorLevel = sensorLevel if sensorLevel else savedData["sensorLevel"]
             savedData["sensorLevel"] = sensorLevel
 
-            rainfall = '10 mm'
+            time = '10'
 
             data = { 'water' : str(flowRate), 'pump' : pumpState,
-                     'level': str(waterLevel), 'rainfall' : rainfall, 'sensor' : sensorLevel}
+                     'level': str(waterLevel), 'time' : time, 'sensor' : sensorLevel}
 
             window.write_event_value("Working", (data))
         except Exception as ex:
@@ -103,8 +110,8 @@ def read(window, go_event):
 def gui_init():
     layout = [[sg.Text('Podaj wysokość pojemnika w mm', key="height"), sg.InputText(key="in1")],
               [sg.Text('Podaj objętość pojemnika', key="vol"), sg.InputText(key="in2")],
+              [sg.Text('Podaj obszar z jakiego zebrano opad', key="area"), sg.InputText(key="in3")],
               [sg.Text("", key="water", visible=False)],
-              [sg.Text("", key="rainfall", visible=False)],
               [sg.Text("", key="level", visible=False)],
               [sg.Text("", key="pump", visible=False)],
               [sg.Button('Zapisz', key="Write", visible=False)],
@@ -119,20 +126,20 @@ def gui_update(window, data):
     window["height"].Update("Wysokość pojemnika: \t" + data["height"])
     window["vol"].Update("Objętość pojemnika: \t" + data["vol"])
     window["water"].Update("Ilość wody: \t\t" + data["water"], visible=True)
-    window["pump"].Update("Pompa włączona: \t\t1" + data["pump"], visible=True)
-    window["level"].Update("Wysokość wody: \t\t1" + data["level"], visible=True)
-    window["rainfall"].Update("Ilość opadów: \t\t1" + data["rainfall"], visible=True)
+    window["pump"].Update("Pompa włączona: \t\t" + data["pump"], visible=True)
+    window["level"].Update("Wysokość wody: \t\t" + data["level"], visible=True)
     window["in1"].Update(visible=False)
     window["in2"].Update(visible=False)
+    window["in3"].Update(visible=False)
     window["Write"].Update(visible=True)
     window["Start"].Update(visible=False)
 
 
 if __name__ == "__main__":
     window = gui_init()
-
+    data_write = list()
+    schedule.every(10).seconds.do(write_to_file,'data/test.csv',data_write)
     go_event = threading.Event()
-
     while True:
         event, values = window.read()
 
@@ -144,7 +151,7 @@ if __name__ == "__main__":
                 val2 = values['in2']
                 if val1 == '' or val2 == '' or not int(val1) or not int(val2):
                     raise Exception()
-                write(val1)
+                write('MAX:', val1)
                 go_event.set()
                 read_thread = threading.Thread(target=read, args=(window, go_event), daemon=True)
                 read_thread.start()
@@ -153,18 +160,26 @@ if __name__ == "__main__":
                 print("Wysokość i objętość muszą być liczbami")
         elif event == "Working":
             data = values[event]
-            #str((int(data["height"])-int(data["water"]))/int(data["height"]))
             data.update({'height' : values['in1'], 'vol' : values['in2']})
+            
+            valueInPerc = int(values['in1']) - int(data['level'])
+            if valueInPerc < 0:
+                valueInPerc = 0
+            valueInPerc = valueInPerc/ int(values['in1']) * 100
+            area = int(values['in3'])
+            amount += data['water']
 
+            data_write.clear()
+            data_write.append([datetime.datetime.now(),str(valueInPerc) + '%',amount])
             try:
                 gui_update(window, data)
+                schedule.run_pending()
+                #time.sleep(1)
             except Exception as ex:
                 print("sth went wrong - check data")
                 print(ex)
         elif event == "Write":
-            test_data = [['abc', 'def', 'ghj'], ['abc', 'def', 'ghj'], ['abc', 'def', 'ghj']]
-            print('Write')
-            write_to_file('data/test.csv', test_data)
+            write("BB:", '1')
 
 
 
