@@ -2,5 +2,5 @@
     "board": "arduino:avr:uno",
     "port": "COM3",
     "programmer": "avrispmkii",
-    "sketch": "Debug\\Debug.ino"
+    "sketch": "RainfallMeasurement.ino"
 }

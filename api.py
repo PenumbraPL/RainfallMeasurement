@@ -76,11 +76,7 @@ def read(window, go_event):
             elif data_type == 'B':
                 pumpState = 'Wł.' if int(data[1]) else 'Wył.'
                 print(data[1])
-            # ?????
-            elif data_type == 'H':
-                print(data[1])
-            elif data_type == 'H_MIN':
-                print(data[1])
+
             flowRate = flowRate if flowRate else savedData['flowRate']
             savedData["flowRate"] = flowRate
             

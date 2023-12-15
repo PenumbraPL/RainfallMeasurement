@@ -15,7 +15,7 @@
 const uint16_t buttonSwLvl = 500;
 const unsigned long period = 1000;
 const float calibrationFactor = 2.25f; // from datasheet
-const uint16_t sensorSwLvl = 500;
+uint16_t sensorSwLvl = 500;
 uint16_t distanceSwLvl = 0;
 uint16_t objectHeight = 0;
 
@@ -24,11 +24,14 @@ bool reset0 = false;
 bool isWritten = false;
 
 volatile int flowFrequency;
-float flowRate; // global ??
+float flowRate;
 unsigned long oldTime;
-float totalPumpOut;
 bool stringComplete = false;
 String inputString = "";
+
+
+int sensorValue;
+int buttonValue;
 
 /*=========================================*/
 
@@ -38,7 +41,11 @@ void flow(){
    flowFrequency++;
 }
 
-
+void send_to_serial(const char* symbol, int value){
+      Serial.print(symbol);
+      Serial.println(value);
+      Serial.flush();
+}
 
 void setup(){
     Serial.begin(SERIAL_SPEED);
@@ -56,49 +63,49 @@ void setup(){
     attachInterrupt(digitalPinToInterrupt(WATER_FLOW_IN), flow, RISING);
 
    oldTime = millis();
-   totalPumpOut = 0;
 }
+
+enum States { NORMAL, PUMP_OUT };
+
+
+int normal(void* data){
+      if(sensorValue > sensorSwLvl){
+         return PUMP_OUT;
+      }
+      return NORMAL;
+}
+
+int pump_out(void* data){
+      if(hcsr04.distanceInMillimeters() > distanceSwLvl){
+         return NORMAL;
+      }
+      return PUMP_OUT;
+}
+
+int (*states[])(void*) = {normal, pump_out};
+unsigned int current = NORMAL;
 
 void loop() {
    if(millis() - oldTime > period){
       cli();
-      int sensorValue = analogRead(HYDRO_IN);
-      int buttonValue = analogRead(BUTTON_IN);
+      sensorValue = analogRead(HYDRO_IN);
+      buttonValue = analogRead(BUTTON_IN);
 
-      flowRate = (float) flowFrequency / calibrationFactor;
-      flowRate *= 1000. / 60.;
-      totalPumpOut += flowRate;
-      //Serial.write(flowFrequency);
-   #ifdef DEBUG
-      Serial.print("D:" );
-      Serial.println(hcsr04.distanceInMillimeters());
-      //Serial.print("B:");
-      //Serial.println( buttonValue);
-      Serial.print("S:");
-      Serial.println(sensorValue);
-      Serial.print("H:");
-      Serial.println(objectHeight);
-      Serial.print("H_MIN:");
-      Serial.println(distanceSwLvl);
-      Serial.print("P:");
-      Serial.println(String(flowFrequency));
-   #endif
+
+      send_to_serial("D:", hcsr04.distanceInMillimeters());
+      send_to_serial("B:", buttonValue);
+      send_to_serial("S:", sensorValue);
+      send_to_serial("P:", flowFrequency);
       
       
-      if(buttonValue < buttonSwLvl){
-         //turnOn = !turnOn;
-      }
-      if(sensorValue > sensorSwLvl){
-      turnOn = true; 
-      }
+      // if(buttonValue < buttonSwLvl){
+      //    if(current == NORMAL) current = PUMP_OUT;
+      //    if(current == PUMP_OUT) current = NORMAL;
+      // }
 
-      // response to python
-      // machine state
+      current = states[current]((void*) &current);
 
-      if(hcsr04.distanceInMillimeters() > distanceSwLvl){
-         //turnOn = false;
-      }
-      if(turnOn){
+      if(current != PUMP_OUT){
          digitalWrite(WATER_PUMP_OUT, LOW); 
       }else{
          digitalWrite(WATER_PUMP_OUT, HIGH);
@@ -108,33 +115,30 @@ void loop() {
       oldTime = millis();
       sei();
    }
-
 }
 
 void serialEvent() {
   while (Serial.available()) {
-
       inputString = Serial.readString();
-      objectHeight = atoi(inputString.c_str());
-      distanceSwLvl =objectHeight * 0.2;
-      turnOn = true;
-    
-   
-   //inputString += inChar;
-   //Serial.write(&inChar, 1);
-   //if (inChar == '\n') {
-   //   stringComplete = true;
-   // }
+      int delimieter = inputString.indexOf(":");
+      if(inputString.substring(0, delimieter-1).compareTo("BB:")){
+         int buttonValue = inputString.substring(delimieter+1).toInt();
+         if(buttonValue){
+            digitalWrite(WATER_PUMP_OUT, HIGH);
+         }else{
+            digitalWrite(WATER_PUMP_OUT, LOW); 
+         }
+      }
+      if(inputString.substring(0, delimieter-1).compareTo("MAX:")){
+         sensorSwLvl = inputString.substring(delimieter+1).toInt(); // change
+      }
+      if(inputString.substring(0, delimieter-1).compareTo("MIN:")){
+         distanceSwLvl = inputString.substring(delimieter+1).toInt(); // change
+      }
+      
+
+      //objectHeight = atoi(inputString.c_str());
+      //distanceSwLvl = objectHeight * 0.2;
+      //turnOn = true;
   }
 }
-
-
-// float waterInMilliliters(unsigned long period){
-//    flow_frequency = 0;
-//    oldTime = millis();
-//    sei();
-//    while(millis() - oldTime < period);
-//    cli();
-//    flowRate = (float) flowFrequency / calibrationFactor;
-//    flowRate *= 1000. / 60.;
-// }
